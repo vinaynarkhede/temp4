@@ -1,0 +1,7 @@
+# User Authentication File
+# Format: username:password
+# One user per line
+
+admin:admin
+user1:password123
+testuser:testpass
