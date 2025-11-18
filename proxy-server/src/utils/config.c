@@ -38,7 +38,11 @@ void config_set_defaults(proxy_config_t *config) {
     /* Reverse proxy */
     strncpy(config->backend_host, "localhost", sizeof(config->backend_host) - 1);
     config->backend_port = 80;
-    config->num_backends = 1;
+    config->num_backends = 0;
+    config->backend_hosts = NULL;
+    config->backend_ports = NULL;
+    config->backend_weights = NULL;
+    config->lb_algorithm = LB_ALGORITHM_ROUND_ROBIN;
 
     /* Rate limiting */
     config->rate_limit_requests = 100; /* per minute */

@@ -43,11 +43,28 @@ typedef enum {
     THREAD_MODEL_HYBRID
 } thread_model_t;
 
+/* Load Balancing Algorithms */
+typedef enum {
+    LB_ALGORITHM_ROUND_ROBIN,
+    LB_ALGORITHM_LEAST_CONNECTIONS,
+    LB_ALGORITHM_IP_HASH,
+    LB_ALGORITHM_WEIGHTED_RR
+} lb_algorithm_t;
+
+/* Compression Types */
+typedef enum {
+    COMPRESS_NONE = 0,
+    COMPRESS_GZIP = 1,
+    COMPRESS_DEFLATE = 2
+} compression_type_t;
+
 /* Forward declarations */
 typedef struct proxy_config proxy_config_t;
 typedef struct thread_pool thread_pool_t;
 typedef struct cache_entry cache_entry_t;
 typedef struct auth_credentials auth_credentials_t;
+typedef struct backend_server backend_server_t;
+typedef struct ssl_context ssl_context_t;
 
 /* Connection structure */
 typedef struct connection {
@@ -95,6 +112,10 @@ struct proxy_config {
     char backend_host[MAX_HOSTNAME];
     int backend_port;
     int num_backends;
+    char **backend_hosts;
+    int *backend_ports;
+    int *backend_weights;
+    lb_algorithm_t lb_algorithm;
 
     /* Rate limiting */
     int rate_limit_requests;
@@ -182,5 +203,51 @@ ssize_t send_all(int fd, const void *buffer, size_t length);
 /* utils/config.c */
 int config_load(const char *config_file, proxy_config_t *config);
 void config_set_defaults(proxy_config_t *config);
+
+/* monitor/ratelimit.c */
+void ratelimit_init(void);
+int ratelimit_check_request(const char *ip);
+int ratelimit_check_bandwidth(const char *ip, size_t bytes, int direction);
+void ratelimit_update_bandwidth(const char *ip, size_t bytes, int direction);
+void ratelimit_cleanup_old_entries(void);
+void ratelimit_print_stats(void);
+void ratelimit_cleanup(void);
+
+/* core/loadbalancer.c */
+int loadbalancer_init(void);
+backend_server_t* loadbalancer_select_backend(const char *client_ip);
+void loadbalancer_release_backend(backend_server_t *server);
+void loadbalancer_mark_failed(backend_server_t *server);
+void loadbalancer_run_health_checks(void);
+void loadbalancer_print_stats(void);
+void loadbalancer_cleanup(void);
+
+/* protocols/compression.c */
+void compression_init(void);
+int compression_check_accept_encoding(const char *headers);
+int compression_should_compress(const char *content_type, size_t content_length);
+int compression_gzip_compress(const unsigned char *input, size_t input_len,
+                               unsigned char **output, size_t *output_len);
+int compression_deflate_compress(const unsigned char *input, size_t input_len,
+                                  unsigned char **output, size_t *output_len);
+int compression_gzip_decompress(const unsigned char *input, size_t input_len,
+                                 unsigned char **output, size_t *output_len);
+int compression_add_encoding_header(char *response, size_t response_size,
+                                     const char *encoding);
+int compression_update_content_length(char *response, size_t new_length);
+void compression_cleanup(void);
+
+/* protocols/ssl.c */
+int ssl_init(void);
+int ssl_create_server_context(const char *cert_file, const char *key_file);
+ssl_context_t* ssl_create_client_context(int sockfd);
+ssl_context_t* ssl_accept_connection(int sockfd);
+ssize_t ssl_read(ssl_context_t *ssl_ctx, void *buf, size_t len);
+ssize_t ssl_write(ssl_context_t *ssl_ctx, const void *buf, size_t len);
+int ssl_get_peer_cert_info(ssl_context_t *ssl_ctx, char *buf, size_t buf_size);
+const char* ssl_get_cipher_info(ssl_context_t *ssl_ctx);
+void ssl_shutdown(ssl_context_t *ssl_ctx);
+int ssl_generate_self_signed_cert(const char *cert_file, const char *key_file);
+void ssl_cleanup(void);
 
 #endif /* PROXY_H */

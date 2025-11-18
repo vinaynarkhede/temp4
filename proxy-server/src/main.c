@@ -157,6 +157,38 @@ int main(int argc, char **argv) {
         filter_init();
     }
 
+    if (g_config.enable_rate_limiting) {
+        ratelimit_init();
+    }
+
+    if (g_config.enable_compression) {
+        compression_init();
+    }
+
+    if (g_config.enable_ssl) {
+        ssl_init();
+        /* Check if certificate files exist, if not generate self-signed */
+        if (access(g_config.ssl_cert_file, F_OK) != 0 ||
+            access(g_config.ssl_key_file, F_OK) != 0) {
+            printf("[WARN] SSL certificate not found, generating self-signed certificate...\n");
+            /* Create certs directory if it doesn't exist */
+            mkdir("certs", 0755);
+            if (ssl_generate_self_signed_cert(g_config.ssl_cert_file,
+                                              g_config.ssl_key_file) != 0) {
+                fprintf(stderr, "[ERROR] Failed to generate SSL certificate\n");
+            }
+        }
+        if (ssl_create_server_context(g_config.ssl_cert_file,
+                                      g_config.ssl_key_file) != 0) {
+            fprintf(stderr, "[ERROR] Failed to initialize SSL/TLS\n");
+        }
+    }
+
+    /* Initialize load balancer for reverse proxy */
+    if (g_config.mode == PROXY_MODE_REVERSE) {
+        loadbalancer_init();
+    }
+
     stats_init();
 
     /* Initialize and start proxy server */
@@ -188,6 +220,22 @@ int main(int argc, char **argv) {
 
     if (g_config.enable_filtering) {
         filter_cleanup();
+    }
+
+    if (g_config.enable_rate_limiting) {
+        ratelimit_cleanup();
+    }
+
+    if (g_config.enable_compression) {
+        compression_cleanup();
+    }
+
+    if (g_config.mode == PROXY_MODE_REVERSE) {
+        loadbalancer_cleanup();
+    }
+
+    if (g_config.enable_ssl) {
+        ssl_cleanup();
     }
 
     if (g_config.enable_logging) {

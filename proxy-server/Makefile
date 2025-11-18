@@ -2,7 +2,7 @@
 
 CC = gcc
 CFLAGS = -Wall -Wextra -O2 -pthread -I./include
-LDFLAGS = -pthread
+LDFLAGS = -pthread -lz -lssl -lcrypto
 
 # Directories
 SRC_DIR = src
@@ -17,13 +17,17 @@ SRCS = $(SRC_DIR)/main.c \
        $(SRC_DIR)/core/server.c \
        $(SRC_DIR)/core/connection.c \
        $(SRC_DIR)/core/threading.c \
+       $(SRC_DIR)/core/loadbalancer.c \
        $(SRC_DIR)/protocols/http.c \
        $(SRC_DIR)/protocols/socks5.c \
+       $(SRC_DIR)/protocols/compression.c \
+       $(SRC_DIR)/protocols/ssl.c \
        $(SRC_DIR)/cache/cache.c \
        $(SRC_DIR)/auth/auth.c \
        $(SRC_DIR)/filter/filter.c \
        $(SRC_DIR)/monitor/logger.c \
        $(SRC_DIR)/monitor/stats.c \
+       $(SRC_DIR)/monitor/ratelimit.c \
        $(SRC_DIR)/utils/config.c \
        $(SRC_DIR)/utils/network.c
 
